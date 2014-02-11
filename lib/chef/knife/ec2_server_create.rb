@@ -620,6 +620,7 @@ class Chef
         end
 
         if config[:associate_eip]
+          connection.addresses.collect{|addr| pp "address = #{addr} domain = #{addr.domain} eipscope = #{eip_scope}"}
           eips = connection.addresses.collect{|addr| addr if addr.domain == eip_scope}.compact
           pp "eips returned are the following #{eips}"
 
