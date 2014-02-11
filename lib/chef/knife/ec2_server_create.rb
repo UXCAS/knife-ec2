@@ -752,7 +752,7 @@ class Chef
         @ssh_connect_host ||= if config[:server_connect_attribute]
           server.send(config[:server_connect_attribute])
         else
-          vpc_mode? ? server.private_ip_address : server.dns_name
+          vpc_mode? ? server.public_ip_address : server.dns_name
         end
       end
 
