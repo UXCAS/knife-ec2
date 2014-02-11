@@ -741,6 +741,7 @@ class Chef
       end
 
       def wait_for_direct_sshd(hostname, ssh_port)
+        pp "hostname = #{hostname} port = #{ssh_port} ssh_connect_host = #{ssh_connect_host}"
         print(".") until tcp_test_ssh(ssh_connect_host, ssh_port) {
           sleep @initial_sleep_delay ||= (vpc_mode? ? 40 : 10)
           puts("done")
