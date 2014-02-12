@@ -44,7 +44,7 @@ class Chef
         data = {
           "chef_server" => Chef::Config[:chef_server_url],
           "validation_client_name" => Chef::Config[:validation_client_name],
-          "validation_key" => IO.read(Chef::Config[:validation_key]),
+          "validation_key" => IO.binread(Chef::Config[:validation_key]),
           "attributes" => { "run_list" => config[:run_list] }
         }
         data = edit_data(data) if config[:edit]
