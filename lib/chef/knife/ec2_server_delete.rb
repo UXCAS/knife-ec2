@@ -90,7 +90,7 @@ class Chef
 
             puts "\n"
             confirm("Do you really want to delete this server")
-
+            connection.disassociate_address(@server.public_ip_address)
             @server.destroy
 
             print(".")
