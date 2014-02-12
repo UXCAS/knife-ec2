@@ -715,7 +715,6 @@ class Chef
       end
 
       def wait_for_tunnelled_sshd(hostname)
-        system "ssh-keygen -R #{hostname}"
         print(".")
         print(".") until tunnel_test_ssh(ssh_connect_host) {
           sleep @initial_sleep_delay ||= (vpc_mode? ? 40 : 10)
@@ -740,6 +739,7 @@ class Chef
       end
 
       def wait_for_direct_sshd(hostname, ssh_port)
+        system "ssh-keygen -R #{hostname}"
         print(".") until tcp_test_ssh(ssh_connect_host, ssh_port) {
           sleep @initial_sleep_delay ||= (vpc_mode? ? 40 : 10)
           puts("done")
