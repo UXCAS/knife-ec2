@@ -283,23 +283,27 @@ class Chef
     end
 
       def tcp_test_ssh(hostname, ssh_port)
-        ui.info("testing acces to #{ssh_port} on #{hostname}")
+        ui.info("testing access to #{ssh_port} on #{hostname}")
         tcp_socket = TCPSocket.new(hostname, ssh_port)
         readable = IO.select([tcp_socket], nil, nil, 5)
         if readable
           Chef::Log.debug("sshd accepting connections on #{hostname}, banner is #{tcp_socket.gets}")
+          ui.info("Access aquired")
           yield
           true
         else
           false
         end
       rescue SocketError, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, IOError
+        ui.info("Access waiting because of SocketError, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, IOError")
         sleep 2
         false
       rescue Errno::EPERM, Errno::ETIMEDOUT
+        ui.info("Access waiting because of Errno::EPERM, Errno::ETIMEDOUT")
         false
       # This happens on some mobile phone networks
       rescue Errno::ECONNRESET
+        ui.info("Access waiting because of Errno::ECONNRESET")
         sleep 2
         false
       ensure
