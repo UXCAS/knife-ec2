@@ -149,6 +149,8 @@ class Chef
         else
           true
         end
+      rescue SocketError, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, IOError
+        true
       end
     end
   end
