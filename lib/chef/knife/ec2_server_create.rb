@@ -283,6 +283,7 @@ class Chef
     end
 
       def tcp_test_ssh(hostname, ssh_port)
+        ui.info("testing acces to #{ssh_port} on #{hostname}")
         tcp_socket = TCPSocket.new(hostname, ssh_port)
         readable = IO.select([tcp_socket], nil, nil, 5)
         if readable

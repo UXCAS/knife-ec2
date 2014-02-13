@@ -152,6 +152,8 @@ class Chef
         end
       rescue SocketError, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, IOError
         return true
+      ensure
+        tcp_socket && tcp_socket.close
       end
     end
   end
