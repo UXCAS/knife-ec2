@@ -64,13 +64,14 @@ class Chef
 
         validate!
         if @name_args.empty? && config[:chef_node_name]
-          ui.info("no instance id is specific, trying to retrieve it from node name")
+          ui.info("no instance id is specified, trying to retrieve it from node name")
           instance_id = fetch_instance_id(config[:chef_node_name])
           @name_args << instance_id unless instance_id.nil?
+          ui.info("The following ids were found #{@name_args}")
         end
 
         @name_args.each do |instance_id|
-
+          ui.info("Removing the following node id #{instance_id}")
           begin
             @server = connection.servers.get(instance_id)
 
@@ -145,12 +146,12 @@ class Chef
         tcp_socket = TCPSocket.new(hostname, ssh_port)
         readable = IO.select([tcp_socket], nil, nil, 5)
         if readable
-          false
+          return false
         else
-          true
+          return true
         end
       rescue SocketError, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, IOError
-        true
+        return true
       end
     end
   end
