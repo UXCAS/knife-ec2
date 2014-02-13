@@ -742,7 +742,7 @@ class Chef
         ui.info("Looking for old ssh entries")
         system "ssh-keygen -R #{hostname}"
 
-        ui.info("Waiting for sshd to go live")
+        ui.info("Waiting for sshd to go live on #{ssh_connect_host}")
         print(".") until tcp_test_ssh(ssh_connect_host, ssh_port) {
           sleep @initial_sleep_delay ||= (vpc_mode? ? 40 : 10)
           puts("done")
