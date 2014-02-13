@@ -739,7 +739,10 @@ class Chef
       end
 
       def wait_for_direct_sshd(hostname, ssh_port)
+        ui.info("Looking for old ssh entries")
         system "ssh-keygen -R #{hostname}"
+
+        ui.info("Waiting for sshd to go live")
         print(".") until tcp_test_ssh(ssh_connect_host, ssh_port) {
           sleep @initial_sleep_delay ||= (vpc_mode? ? 40 : 10)
           puts("done")

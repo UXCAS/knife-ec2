@@ -95,7 +95,7 @@ class Chef
             @server.destroy
 
             print(".")
-            print(".") until tcp_test_ssh(@server.public_ip_address, 22) {
+            print(".") until tcp_test_ssh_gone(@server.public_ip_address, 22) {
               sleep 10
               puts("done")
             }
@@ -142,7 +142,7 @@ class Chef
         @query ||= Chef::Search::Query.new
       end
 
-      def tcp_test_ssh(hostname, ssh_port)
+      def tcp_test_ssh_gone(hostname, ssh_port)
         tcp_socket = TCPSocket.new(hostname, ssh_port)
         readable = IO.select([tcp_socket], nil, nil, 5)
         if readable
