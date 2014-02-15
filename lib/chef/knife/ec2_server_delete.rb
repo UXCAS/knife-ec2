@@ -146,11 +146,15 @@ class Chef
         tcp_socket = TCPSocket.new(hostname, ssh_port)
         readable = IO.select([tcp_socket], nil, nil, 5)
         if readable
+          sleep 2
           return false
         else
+          yield
           return true
         end
       rescue SocketError, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, IOError
+        sleep 2
+        yield
         return true
       ensure
         tcp_socket && tcp_socket.close

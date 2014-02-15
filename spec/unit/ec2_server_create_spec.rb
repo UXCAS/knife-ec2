@@ -27,7 +27,7 @@ describe Chef::Knife::Ec2ServerCreate do
     @knife_ec2_create = Chef::Knife::Ec2ServerCreate.new
     @knife_ec2_create.initial_sleep_delay = 0
     @knife_ec2_create.stub(:tcp_test_ssh).and_return(true)
-
+    @knife_ec2_create.stub(:call_system).and_return(true)
     {
       :image => 'image',
       :aws_ssh_key_id => 'aws_ssh_key_id',
@@ -41,16 +41,16 @@ describe Chef::Knife::Ec2ServerCreate do
     @ec2_connection.stub_chain(:tags).and_return double('create', :create => true)
     @ec2_connection.stub_chain(:images, :get).and_return double('ami', :root_device_type => 'not_ebs', :platform => 'linux')
     @ec2_connection.stub_chain(:addresses).and_return [double('addesses', {
-            :domain => 'standard',
-            :public_ip => '111.111.111.111',
-            :server_id => nil,
-            :allocation_id => ''})]
+      :domain => 'standard',
+      :public_ip => '111.111.111.111',
+      :server_id => nil,
+      :allocation_id => ''})]
 
 
     @ec2_servers = double()
     @new_ec2_server = double()
 
-    @ec2_server_attribs = { :id => 'i-39382318',
+    @ec2_server_attribs = {:id => 'i-39382318',
                            :flavor_id => 'm1.small',
                            :image_id => 'ami-47241231',
                            :placement_group => 'some_placement_group',
@@ -62,7 +62,7 @@ describe Chef::Knife::Ec2ServerCreate do
                            :public_ip_address => '75.101.253.10',
                            :private_dns_name => 'ip-10-251-75-20.ec2.internal',
                            :private_ip_address => '10.251.75.20',
-                           :root_device_type => 'not_ebs' }
+                           :root_device_type => 'not_ebs'}
 
     @ec2_server_attribs.each_pair do |attrib, value|
       @new_ec2_server.stub(attrib).and_return(value)
@@ -97,6 +97,16 @@ describe Chef::Knife::Ec2ServerCreate do
     it "creates an EC2 instance and bootstraps it" do
       @new_ec2_server.should_receive(:wait_for).and_return(true)
       @knife_ec2_create.should_receive(:ssh_override_winrm)
+      @knife_ec2_create.run
+      @knife_ec2_create.server.should_not == nil
+    end
+
+    it "updates the Route 53 information" do
+      @knife_ec2_create.config[:root_zone] = "foo.bar.com."
+      @knife_ec2_create.config[:route_53_api_url] = "https://route53.aws.amazon.com"
+      @knife_ec2_create.config[:fqdn] = "node.foo.bar.com"
+      @new_ec2_server.should_receive(:wait_for).and_return(true)
+      @knife_ec2_create.should_receive(:bootstrap_dns).and_return(true)
       @knife_ec2_create.run
       @knife_ec2_create.server.should_not == nil
     end
@@ -205,7 +215,7 @@ describe Chef::Knife::Ec2ServerCreate do
 
     it "set default distro to windows-chef-client-msi for windows" do
       @knife_ec2_create.config[:winrm_password] = 'winrm-password'
-      @knife_ec2_create.config[:bootstrap_protocol] = 'winrm'      
+      @knife_ec2_create.config[:bootstrap_protocol] = 'winrm'
       @bootstrap_winrm = Chef::Knife::BootstrapWindowsWinrm.new
       Chef::Knife::BootstrapWindowsWinrm.stub(:new).and_return(@bootstrap_winrm)
       @bootstrap_winrm.should_receive(:run)
@@ -313,7 +323,7 @@ describe Chef::Knife::Ec2ServerCreate do
         Chef::Config[:knife][:secret] = "sys-knife-secret"
       end
 
-     it "uses the the knife configuration when no explicit value is provided" do
+      it "uses the the knife configuration when no explicit value is provided" do
         expect(bootstrap.config[:secret]).to eql("sys-knife-secret")
       end
 
@@ -350,6 +360,7 @@ describe Chef::Knife::Ec2ServerCreate do
       @knife_ec2_create.config[:distro] = 'ubuntu-10.04-magic-sparkles'
       @knife_ec2_create.config[:run_list] = ['role[base]']
       @knife_ec2_create.config[:json_attributes] = "{'my_attributes':{'foo':'bar'}"
+
 
       @bootstrap = @knife_ec2_create.bootstrap_for_linux_node(@new_ec2_server, @new_ec2_server.dns_name)
     end
@@ -422,7 +433,9 @@ describe Chef::Knife::Ec2ServerCreate do
     it "configured the bootstrap to set an ec2 hint (via Chef::Config)" do
       Chef::Config[:knife][:hints]["ec2"].should_not be_nil
     end
+
   end
+
   describe "when configuring the winrm bootstrap process for windows" do
     before do
       @knife_ec2_create.stub(:fetch_server_fqdn).and_return("SERVERNAME")
@@ -439,7 +452,7 @@ describe Chef::Knife::Ec2ServerCreate do
       @knife_ec2_create.config[:run_list] = ['role[base]']
       @knife_ec2_create.config[:json_attributes] = "{'my_attributes':{'foo':'bar'}"
       @bootstrap = @knife_ec2_create.bootstrap_for_windows_node(@new_ec2_server, @new_ec2_server.dns_name)
-   end
+    end
 
     include_examples "generic bootstrap configurations" do
       subject { @knife_ec2_create }
@@ -486,7 +499,7 @@ describe Chef::Knife::Ec2ServerCreate do
     it "configures sets the bootstrap's run_list" do
       @bootstrap.config[:run_list].should == ['role[base]']
     end
- end
+  end
 
   describe "when validating the command-line parameters" do
     before do
@@ -574,13 +587,13 @@ describe Chef::Knife::Ec2ServerCreate do
     end
 
     it "adds the specified ephemeral device mappings" do
-      @knife_ec2_create.config[:ephemeral] = [ "/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde" ]
+      @knife_ec2_create.config[:ephemeral] = ["/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde"]
       server_def = @knife_ec2_create.create_server_def
 
-      server_def[:block_device_mapping].should == [{ "VirtualName" => "ephemeral0", "DeviceName" => "/dev/sdb" },
-                                                   { "VirtualName" => "ephemeral1", "DeviceName" => "/dev/sdc" },
-                                                   { "VirtualName" => "ephemeral2", "DeviceName" => "/dev/sdd" },
-                                                   { "VirtualName" => "ephemeral3", "DeviceName" => "/dev/sde" }]
+      server_def[:block_device_mapping].should == [{"VirtualName" => "ephemeral0", "DeviceName" => "/dev/sdb"},
+                                                   {"VirtualName" => "ephemeral1", "DeviceName" => "/dev/sdc"},
+                                                   {"VirtualName" => "ephemeral2", "DeviceName" => "/dev/sdd"},
+                                                   {"VirtualName" => "ephemeral3", "DeviceName" => "/dev/sde"}]
     end
 
     it "sets the specified private ip address" do
@@ -604,29 +617,29 @@ describe Chef::Knife::Ec2ServerCreate do
 
       server_def[:iam_instance_profile_name].should == nil
     end
-    
+
     it 'Set Tenancy Dedicated when both VPC mode and Flag is True' do
       @knife_ec2_create.config[:dedicated_instance] = true
       @knife_ec2_create.stub(:vpc_mode? => true)
-      
+
       server_def = @knife_ec2_create.create_server_def
       server_def[:tenancy].should == "dedicated"
     end
-    
+
     it 'Tenancy should be default with no vpc mode even is specified' do
       @knife_ec2_create.config[:dedicated_instance] = true
-      
+
       server_def = @knife_ec2_create.create_server_def
       server_def[:tenancy].should == nil
     end
-    
+
     it 'Tenancy should be default with vpc but not requested' do
       @knife_ec2_create.stub(:vpc_mode? => true)
-      
+
       server_def = @knife_ec2_create.create_server_def
       server_def[:tenancy].should == nil
     end
-    
+
     it "sets associate_public_ip to true if specified and in vpc_mode" do
       @knife_ec2_create.config[:subnet_id] = 'subnet-1a2b3c4d'
       @knife_ec2_create.config[:associate_public_ip] = true
@@ -635,6 +648,107 @@ describe Chef::Knife::Ec2ServerCreate do
       server_def[:subnet_id].should == 'subnet-1a2b3c4d'
       server_def[:associate_public_ip].should == true
     end
+  end
+
+  describe "bootstrap dns" do
+    before(:each) do
+      @new_ec2_server.stub(
+        :dns_name => 'public_name',
+        :private_ip_address => 'some.private_ip',
+        :public_ip_address => 'some.public.ip',
+        :custom => 'custom'
+      )
+
+      @knife_ec2_create.config[:root_zone] = "foo.bar.com."
+      @knife_ec2_create.config[:route_53_api_url] = "https://route53.aws.amazon.com"
+      @knife_ec2_create.config[:fqdn] = "node.foo.bar.com"
+      @knife_ec2_create.config[:aws_access_key_id] = "pickles"
+      @knife_ec2_create.config[:aws_secret_access_key] = "waffles"
+
+      @dns_record1 = double(Route53::DNSRecord)
+
+      @dns_record1.stub(
+        :name => "foo.bar.com."
+      )
+
+      @dns_record2 = double(Route53::DNSRecord)
+
+      @dns_record2.stub(
+        :name => "node.foo.bar.com."
+      )
+
+
+      @records = [@dns_record1]
+
+      @zone_one = double(Route53::Zone)
+      @zone_one.stub(
+        :name => 'foo.bar.com.',
+        :host_url => '/hostedzone/ZSVTJ48WWSJLD'
+      )
+      @zones = [@zone_one]
+
+      @route52_connection = double(Route53::Connection)
+
+
+      allow(@route52_connection).to receive(:get_zones).and_return(@zones)
+
+      allow(@zone_one).to receive(:get_records).and_return(@records)
+
+    end
+
+    it "creates a new DNS entry associated with private IP" do
+      Route53::Connection.should_receive(:new).and_return(@route52_connection)
+
+      Route53::DNSRecord.should_receive(:new).with("node.foo.bar.com.", 'A', "3600", ["some.private_ip"], @zone_one).and_return(@dns_record2)
+
+      @dns_record2.should_receive(:create).and_return(true)
+
+      @knife_ec2_create.bootstrap_dns(@new_ec2_server, @knife_ec2_create.config)
+    end
+
+    it "creates a new DNS entry associated with elastic IP" do
+
+      @knife_ec2_create.config[:associate_eip] = "someother.public.ip"
+
+      Route53::Connection.should_receive(:new).and_return(@route52_connection)
+
+      Route53::DNSRecord.should_receive(:new).with("node.foo.bar.com.", 'A', "3600", ["someother.public.ip"], @zone_one).and_return(@dns_record2)
+
+      @dns_record2.should_receive(:create).and_return(true)
+
+      @knife_ec2_create.bootstrap_dns(@new_ec2_server, @knife_ec2_create.config)
+    end
+
+    context "when DNS entry exists" do
+      before(:each) do
+        @records = [@dns_record1, @dns_record2]
+        allow(@zone_one).to receive(:get_records).and_return(@records)
+      end
+
+      it "updates an existing DNS entry associated with private IP" do
+
+        Route53::Connection.should_receive(:new).and_return(@route52_connection)
+
+        Route53::DNSRecord.should_not_receive(:new)
+
+        @dns_record2.should_receive(:update).with(nil, nil, nil, ["some.private_ip"]).and_return(true)
+
+        @knife_ec2_create.bootstrap_dns(@new_ec2_server, @knife_ec2_create.config)
+      end
+
+      it "updates an existing DNS entry associated with elastic IP" do
+        @knife_ec2_create.config[:associate_eip] = "someother.public.ip"
+
+        Route53::Connection.should_receive(:new).and_return(@route52_connection)
+
+        Route53::DNSRecord.should_not_receive(:new)
+
+        @dns_record2.should_receive(:update).with(nil, nil, nil, ["someother.public.ip"]).and_return(true)
+
+        @knife_ec2_create.bootstrap_dns(@new_ec2_server, @knife_ec2_create.config)
+      end
+    end
+
   end
 
   describe "ssh_connect_host" do
@@ -653,12 +767,6 @@ describe Chef::Knife::Ec2ServerCreate do
       end
     end
 
-    describe "with vpc_mode?" do
-      it 'should use private ip' do
-        @knife_ec2_create.stub(:vpc_mode? => true)
-        @knife_ec2_create.ssh_connect_host.should == 'private_ip'
-      end
-    end
 
     describe "with custom server attribute" do
       it 'should use custom server attribute' do

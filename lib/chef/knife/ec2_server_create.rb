@@ -70,6 +70,15 @@ class Chef
       option :associate_eip,
         :long => "--associate-eip IP_ADDRESS",
         :description => "Associate existing elastic IP address with instance after launch"
+
+      option :root_zone,
+        :long => "--root-zone",
+        :description => "Root Zone for Route53 configuration"
+
+      option :route_53_api_url,
+        :long => "--route-53-url",
+        :description => "The API url for route 53 service"
+
       
       option :dedicated_instance,
               :long => "--dedicated_instance",
@@ -285,13 +294,15 @@ class Chef
       def tcp_test_ssh(hostname, ssh_port)
         ui.info("testing access to #{ssh_port} on #{hostname}")
         tcp_socket = TCPSocket.new(hostname, ssh_port)
+        ui.info("Got the socket #{tcp_socket}")
         readable = IO.select([tcp_socket], nil, nil, 5)
         if readable
           Chef::Log.debug("sshd accepting connections on #{hostname}, banner is #{tcp_socket.gets}")
-          ui.info("Access aquired")
+          ui.info("Access acquired")
           yield
           true
         else
+          ui.info("Socket not readable")
           false
         end
       rescue SocketError, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH, IOError
@@ -464,6 +475,10 @@ class Chef
             wait_for_sshd(ssh_connect_host)
             ssh_override_winrm
             bootstrap_for_linux_node(@server,ssh_connect_host).run
+
+            if (config.has_key?(:fqdn) && config.has_key?(:root_zone))
+              bootstrap_dns(@server, config)
+            end
         end
 
         puts "\n"
@@ -513,6 +528,28 @@ class Chef
         msg_pair("Environment", config[:environment] || '_default')
         msg_pair("Run List", (config[:run_list] || []).join(', '))
         msg_pair("JSON Attributes",config[:json_attributes]) unless !config[:json_attributes] || config[:json_attributes].empty?
+      end
+
+      def bootstrap_dns(server, create_config)
+        server_ip = config[:associate_eip].nil? ? server.private_ip_address : config[:associate_eip]
+        conn = Route53::Connection.new(:aws_access_key_id, :aws_secret_access_key)
+        zones = conn.get_zones
+
+        if zones.first.name == create_config[:root_zone]
+          zones.first.get_records.each do |record |
+            if record.name == config[:fqdn] || record.name == "#{config[:fqdn]}."
+
+
+              ui.info("Will update dns for #{config[:fqdn]} to have an IP of #{server_ip}")
+              record.update(nil,nil,nil,["#{server_ip}"])
+              return
+            end
+          end
+          ui.info("Creating new dns record for #{config[:fqdn]} and setting the IP to #{server_ip}")
+          new_record = Route53::DNSRecord.new("#{config[:fqdn]}.","A","3600",["#{server_ip}"],zones.first)
+          new_record.create
+        end
+
       end
 
       def bootstrap_common_params(bootstrap)
@@ -745,13 +782,17 @@ class Chef
 
       def wait_for_direct_sshd(hostname, ssh_port)
         ui.info("Looking for old ssh entries")
-        system "ssh-keygen -R #{hostname}"
+        call_system "ssh-keygen -R #{hostname}"
 
         ui.info("Waiting for sshd to go live on #{ssh_connect_host}")
         print(".") until tcp_test_ssh(ssh_connect_host, ssh_port) {
           sleep @initial_sleep_delay ||= (vpc_mode? ? 40 : 10)
           puts("done")
         }
+      end
+
+      def call_system(command)
+        system command
       end
 
       def ssh_connect_host
