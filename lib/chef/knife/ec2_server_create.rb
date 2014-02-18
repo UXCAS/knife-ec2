@@ -811,6 +811,7 @@ class Chef
       end
 
       def associate_eip(elastic_ip)
+        ui.info("Associating instance with #{elastic_ip.public_ip} elastic IP")
         connection.associate_address(server.id, elastic_ip.public_ip, nil, elastic_ip.allocation_id)
         @server.wait_for { public_ip_address == elastic_ip.public_ip }
       end
