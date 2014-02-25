@@ -696,10 +696,10 @@ describe Chef::Knife::Ec2ServerCreate do
 
     end
 
-    it "creates a new DNS entry associated with private IP" do
+    it "creates a new DNS entry associated with public IP" do
       Route53::Connection.should_receive(:new).and_return(@route52_connection)
 
-      Route53::DNSRecord.should_receive(:new).with("node.foo.bar.com.", 'A', "3600", ["some.private_ip"], @zone_one).and_return(@dns_record2)
+      Route53::DNSRecord.should_receive(:new).with("node.foo.bar.com.", 'A', "3600", ["some.public.ip"], @zone_one).and_return(@dns_record2)
 
       @dns_record2.should_receive(:create).and_return(true)
 
@@ -725,13 +725,13 @@ describe Chef::Knife::Ec2ServerCreate do
         allow(@zone_one).to receive(:get_records).and_return(@records)
       end
 
-      it "updates an existing DNS entry associated with private IP" do
+      it "updates an existing DNS entry associated with public IP" do
 
         Route53::Connection.should_receive(:new).and_return(@route52_connection)
 
         Route53::DNSRecord.should_not_receive(:new)
 
-        @dns_record2.should_receive(:update).with(nil, nil, nil, ["some.private_ip"]).and_return(true)
+        @dns_record2.should_receive(:update).with(nil, nil, nil, ["some.public.ip"]).and_return(true)
 
         @knife_ec2_create.bootstrap_dns(@new_ec2_server, @knife_ec2_create.config)
       end

@@ -532,7 +532,7 @@ class Chef
       end
 
       def bootstrap_dns(server, create_config)
-        server_ip = config[:associate_eip].nil? ? server.private_ip_address : config[:associate_eip]
+        server_ip = config[:associate_eip].nil? ? server.public_ip_address : config[:associate_eip]
         conn = Route53::Connection.new(config[:aws_access_key_id], config[:aws_secret_access_key])
         zones = conn.get_zones
 
